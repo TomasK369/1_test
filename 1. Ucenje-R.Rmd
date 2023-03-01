@@ -1,0 +1,96 @@
+---
+title: "osnove ciscenja baz"
+author: "Tomaž Krampf"
+date: "2 4 2022"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+## Za urejanje: (instalira se paket "dplyr")
+### stolpci:
+- select()
+- mutate() 
+
+### vrstice:
+- filter()
+- distinct()
+- arrange()
+
+### skupine:
+- group_by()
+- summarize()
+- count()
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(scales)
+library(readxl)
+library(knitr)
+if(!require(dplyr)) install.packages("dplyr")
+if(!require(scales)) install.packages("scales")
+```
+
+
+```{r include=FALSE}
+
+baza1 <- read_excel("C:/Users/tomazkrampf/Desktop/Faks/3. TRETJI LETNIK/Praksa/Get Interactive - podjetje/2.Cela baza - NEOCISCENA.xlsx")
+baza1
+```
+Tukaj spremenimo vse N/A vrednosti v dejanske NA
+```{r}
+baza1[baza1 == "N/A"] <- NA
+```
+
+
+
+
+
+Tukaj ožamo bazo, ker ne rabimo vseh stolpcev. **Preimenovali smo stolpce** in naredili  smo **nov stolpec** povprečen čas gledanja videa **v sekundah**. Prav tako smo izločili neveljavne vrednosti (NA). Nisem prepričan če je prav, ampak od 6608 vrstic jih je ostalo samo 3294. **OLEPŠAJ PRIKAZ TABELE**
+```{r}
+#tukaj bomo delali novo bazo in vse funkcije 
+
+baza1 %>% 
+  select(Ime = `Campaign name`, Size = `Creative size`,Type = `Creative type`,Device,Impressions,Povp_cas = `MOAT - Average In-View Time (ms)`) %>% 
+  na.omit() %>% 
+  transform(Povp_cas = as.numeric(Povp_cas)) %>% 
+  mutate(Povp_cas_sek = round(Povp_cas/1000, digits = 0)) %>% 
+  head(10)
+
+```
+## aggregate() 
+- Najprej moremo seštet vse po kampanijah. Potem probajmo naredit nov stolpec CTR, ki ga bomo mi izračunali (total clicks/total impressions na posamezno kampanijo). Vseh kampanij je očitno 654(preveri)
+```{r}
+
+
+baza1 %>% 
+  select(Ime = `Campaign name`, Clicks, Impressions) %>%
+  aggregate(cbind(Impressions, Clicks)  ~ Ime, . , FUN = sum) %>% 
+  mutate(CTR0 = (Clicks/Impressions*100)) %>% 
+  mutate(CTR = scales::percent(Clicks/Impressions, accuracy = 0.01)) %>% 
+  head(10) #TAKO SE DA V PROCENTE!!!!!! da so lepi
+  
+
+```
+Tukaj je prikaz 15 najbolj izstopajočih CTR vrednosti (max=133%,min=16,67%). Za te kampanije moremo pogledat zakaj imajo tako visoke vrednosti (imajo malo impressionov).
+```{r}
+baza1 %>% 
+  select(Ime = `Campaign name`, Clicks, Impressions) %>%
+  aggregate(cbind(Impressions, Clicks)  ~ Ime, . , FUN = sum) %>% 
+   mutate(CTR0 = (Clicks/Impressions*100)) %>%  
+  arrange(desc(CTR0)) %>% 
+  head(15) %>% 
+  mutate(CTR = scales::percent(Clicks/Impressions, accuracy = 0.01))
+
+```
+
+
+
+
+
+
+
+
+
+
